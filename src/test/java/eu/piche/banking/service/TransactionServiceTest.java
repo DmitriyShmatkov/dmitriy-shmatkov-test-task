@@ -1,10 +1,11 @@
 package eu.piche.banking.service;
 
-import eu.piche.banking.model.entity.Account;
+import eu.piche.banking.model.entity.*;
 import eu.piche.banking.model.request.DepositRequest;
 import eu.piche.banking.model.request.TransferRequest;
 import eu.piche.banking.model.request.WithdrawRequest;
 import eu.piche.banking.repository.AccountRepository;
+import eu.piche.banking.repository.TransactionRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -27,8 +28,12 @@ class TransactionServiceTest {
     private TransactionService transactionService;
     @Mock
     private AccountRepository accountRepository;
+    @Mock
+    private TransactionRepository transactionRepository;
     @Captor
     private ArgumentCaptor<Account> accountCaptor;
+    @Captor
+    private ArgumentCaptor<Transaction> transactionCaptor;
 
     @Test
     void deposit() {
@@ -42,6 +47,13 @@ class TransactionServiceTest {
         Account updatedAccount = accountCaptor.getValue();
         assertThat(updatedAccount.getAccountNumber()).isEqualTo(1L);
         assertThat(updatedAccount.getBalance()).isEqualTo(150L);
+
+        verify(transactionRepository).save(transactionCaptor.capture());
+        Transaction savedTransaction = transactionCaptor.getValue();
+        assertThat(savedTransaction).isInstanceOf(DepositTransaction.class);
+        assertThat(savedTransaction.getTimestamp()).isNotNull();
+        assertThat(savedTransaction.getAccountNumber()).isEqualTo(1L);
+        assertThat(savedTransaction.getAmount()).isEqualTo(50L);
     }
 
     @Test
@@ -55,6 +67,7 @@ class TransactionServiceTest {
                 .hasMessageContaining("Account number not found");
         verify(accountRepository).findById(1L);
         verify(accountRepository, never()).save(any());
+        verify(transactionRepository, never()).save(any());
     }
 
     @Test
@@ -69,6 +82,13 @@ class TransactionServiceTest {
         var updatedAccount = accountCaptor.getValue();
         assertThat(updatedAccount.getAccountNumber()).isEqualTo(1L);
         assertThat(updatedAccount.getBalance()).isEqualTo(50L);
+
+        verify(transactionRepository).save(transactionCaptor.capture());
+        Transaction savedTransaction = transactionCaptor.getValue();
+        assertThat(savedTransaction).isInstanceOf(WithdrawTransaction.class);
+        assertThat(savedTransaction.getTimestamp()).isNotNull();
+        assertThat(savedTransaction.getAccountNumber()).isEqualTo(1L);
+        assertThat(savedTransaction.getAmount()).isEqualTo(50L);
     }
 
     @Test
@@ -82,6 +102,7 @@ class TransactionServiceTest {
                 .hasMessageContaining("Account number not found");
         verify(accountRepository).findById(1L);
         verify(accountRepository, never()).save(any());
+        verify(transactionRepository, never()).save(any());
     }
 
     @Test
@@ -96,6 +117,7 @@ class TransactionServiceTest {
                 .hasMessageContaining("Not enough means on the balance");
         verify(accountRepository).findById(1L);
         verify(accountRepository, never()).save(any());
+        verify(transactionRepository, never()).save(any());
     }
 
     @Test
@@ -115,6 +137,14 @@ class TransactionServiceTest {
         assertThat(updatedFrom.getBalance()).isEqualTo(50L);
         assertThat(updatedTo.getAccountNumber()).isEqualTo(2L);
         assertThat(updatedTo.getBalance()).isEqualTo(250L);
+
+        verify(transactionRepository).save(transactionCaptor.capture());
+        assertThat(transactionCaptor.getValue()).isInstanceOf(TransferTransaction.class);
+        TransferTransaction savedTransaction = (TransferTransaction) transactionCaptor.getValue();
+        assertThat(savedTransaction.getTimestamp()).isNotNull();
+        assertThat(savedTransaction.getAccountNumber()).isEqualTo(1L);
+        assertThat(savedTransaction.getAmount()).isEqualTo(50L);
+        assertThat(savedTransaction.getRecipientAccountNumber()).isEqualTo(2L);
     }
 
     @Test
@@ -128,6 +158,7 @@ class TransactionServiceTest {
                 .hasMessageContaining("Sender account number not found");
         verify(accountRepository).findById(1L);
         verify(accountRepository, never()).save(any());
+        verify(transactionRepository, never()).save(any());
     }
 
     @Test
@@ -140,10 +171,11 @@ class TransactionServiceTest {
         assertThatThrownBy(() -> transactionService.transfer(request))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("404")
-                .hasMessageContaining("Receiver account number not found");
+                .hasMessageContaining("Recipient account number not found");
         verify(accountRepository).findById(1L);
         verify(accountRepository).findById(2L);
         verify(accountRepository, never()).save(any());
+        verify(transactionRepository, never()).save(any());
     }
 
 
@@ -163,5 +195,6 @@ class TransactionServiceTest {
         verify(accountRepository).findById(1L);
         verify(accountRepository).findById(2L);
         verify(accountRepository, never()).save(any());
+        verify(transactionRepository, never()).save(any());
     }
 }

@@ -1,8 +1,11 @@
 package eu.piche.banking.service;
 
 import eu.piche.banking.model.entity.Account;
+import eu.piche.banking.model.entity.CreateTransaction;
+import eu.piche.banking.model.entity.Transaction;
 import eu.piche.banking.model.request.CreateAccountRequest;
 import eu.piche.banking.repository.AccountRepository;
+import eu.piche.banking.repository.TransactionRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -27,8 +30,12 @@ class AccountServiceTest {
     private AccountService accountService;
     @Mock
     private AccountRepository accountRepository;
+    @Mock
+    private TransactionRepository transactionRepository;
     @Captor
     private ArgumentCaptor<Account> accountCaptor;
+    @Captor
+    private ArgumentCaptor<Transaction> transactionCaptor;
 
     @Test
     void getAccount() {
@@ -75,5 +82,12 @@ class AccountServiceTest {
         verify(accountRepository).save(accountCaptor.capture());
         assertThat(accountCaptor.getValue()).isEqualTo(newAccount);
         assertThat(result).isEqualTo(savedAccount);
+
+        verify(transactionRepository).save(transactionCaptor.capture());
+        Transaction savedTransaction = transactionCaptor.getValue();
+        assertThat(savedTransaction).isInstanceOf(CreateTransaction.class);
+        assertThat(savedTransaction.getTimestamp()).isNotNull();
+        assertThat(savedTransaction.getAccountNumber()).isEqualTo(1L);
+        assertThat(savedTransaction.getAmount()).isEqualTo(100L);
     }
 }
